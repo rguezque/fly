@@ -16,7 +16,7 @@
  * @function get_files_params(): array
  * @function get_globals_params(): array
  * @function setglobal(string $name, $value): void
- * @function getglobal(string $name)
+ * @function getglobal(string $name): void
  * @function response(string $body = '', int $code = HTTP_OK, ?array $header = null): void
  * @function redirect(string $uri): void
  */
