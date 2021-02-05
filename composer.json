@@ -1,0 +1,16 @@
+{
+    "name": "rguezque/fly-routing",
+    "description": "Simple router PHP No-POO",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Luis Rodriguez",
+            "email": "rguezque@gmail.com",
+            "role": "Original developer"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "files": ["src/connection.php", "src/http.php", "src/template.php","src/fly.php"]
+    }
+}
