@@ -5,13 +5,12 @@
  * @license   https://opensource.org/licenses/MIT    MIT License
  */
 
+namespace connection;
 /**
  * Funciones de conexión PDO MySQL
  * 
  * @function pdo_mysql(string $string_url, ?array $options = null): ?PDO
  */
-
-namespace connection;
 
 use PDO;
 use PDOException;
@@ -25,18 +24,23 @@ use PDOException;
  * @throws PDOException
  */
 function pdo_mysql(string $string_url, ?array $options = null): ?PDO {
+    $connection = null;
+    
     $params = parse_url($string_url);
     
     $dsn = isset($params['scheme']) ? sprintf('%s:', $params['scheme']) : 'mysql:';
 
+    // Host
     if(isset($params['host'])) {
         $dsn .= sprintf('host=%s;', $params['host']);
     }
 
+    // Port
     if(isset($params['port'])) {
         $dsn .= sprintf('port=%s;', $params['port']);
     }
 
+    // Database name
     if(isset($params['path'])) {
         $dsn .= sprintf('dbname=%s;', trim($params['path'], '/\\'));
     }
@@ -44,10 +48,12 @@ function pdo_mysql(string $string_url, ?array $options = null): ?PDO {
     if(isset($params['query'])) {
         parse_str($params['query'], $result);
         
+        // Charset
         if(isset($result['charset'])) {
             $dsn .= sprintf('charset=%s;', $result['charset']);
         }
 
+        // Persistent connection option
         if(isset($result['persistent'])) {
             $persistent = [PDO::ATTR_PERSISTENT => $result['persistent']];
             
@@ -57,16 +63,18 @@ function pdo_mysql(string $string_url, ?array $options = null): ?PDO {
         } 
     }
 
+    // Username
     $username = (string) $params['user'];
+    // Password
     $password = (string) $params['pass'];
 
     try {
-        return new PDO($dsn, $username, $password, $options);
+        $connection = new PDO($dsn, $username, $password, $options);
     } catch(PDOException $e) {
         printf('%s in file <b>%s</b> on line <b>%s</b><pre>%s</pre>', $e->getMessage(), $e->getFile(), $e->getLine(), $e->getTraceAsString());
     }
     
-    return null;
+    return $connection;
 }
 
 ?>

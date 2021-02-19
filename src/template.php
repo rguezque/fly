@@ -5,6 +5,7 @@
  * @license   https://opensource.org/licenses/MIT    MIT License
  */
 
+namespace template;
 /**
  * Funciones de template
  * 
@@ -13,10 +14,9 @@
  * @function template(string $template, array $arguments = []): void
  */
 
-namespace template;
-
 use RuntimeException;
-use function http\{setglobal, get_globals_params};
+use function http\setglobal;
+use function http\getglobal;
 
 /**
  * Asigna la ruta al directorio de plantillas
@@ -35,9 +35,7 @@ function set_views_path(string $path): void {
  * @return string
  */
 function get_views_path(): string {
-    $globals = get_globals_params();
-
-    return isset($globals['VIEWS_PATH']) ? $globals['VIEWS_PATH'] : '';
+    return getglobal('VIEWS_PATH') ?? '';
 }
 
 /**
@@ -54,7 +52,7 @@ function template(string $template, array $arguments = []): void {
     }
 
     $template .= '.php';
-    $template = '/'.ltrim($template, '/\\');
+    $template = '/' . ltrim($template, '/\\');
     $template = get_views_path() . $template;
 
     if(!file_exists($template)) {

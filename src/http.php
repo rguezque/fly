@@ -5,6 +5,7 @@
  * @license   https://opensource.org/licenses/MIT    MIT License
  */
 
+namespace http;
 /**
  * Funciones de http
  * 
@@ -21,9 +22,6 @@
  * @function redirect(string $uri): void
  */
 
-namespace http;
-
-use stdClass;
 
 use function fly\generate_uri;
 
@@ -265,6 +263,7 @@ function response(string $body = '', int $code = HTTP_OK, ?array $header = null)
             header(sprintf('%s: %s', ...$header), true, $code);
         }
     }
+    
     echo $body;
 }
 

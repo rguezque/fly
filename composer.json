@@ -11,6 +11,12 @@
     ],
     "require": {},
     "autoload": {
-        "files": ["src/connection.php", "src/http.php", "src/template.php","src/fly.php"]
+        "files": [
+            "src/helper.php", 
+            "src/connection.php", 
+            "src/http.php", 
+            "src/template.php", 
+            "src/fly.php"
+        ]
     }
 }
