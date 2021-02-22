@@ -91,16 +91,19 @@ function dispatch() {
             throw new RuntimeException(sprintf('El método de petición %s no está soportado.', $request_method));
         }
 
+        // Dependiendo del método de petición se elige el array (GET o POST) correspondiente de rutas
         $all_routes = getglobal('routes');
         $routes = $all_routes[$request_method];
 
         $found = false;
 
         foreach($routes as $route) {
+            // El slash al final no se toma en cuenta
             if($request_uri != '/') {
                 $request_uri = rtrim($request_uri, '/');
             }
             
+            // Prepara el string de la ruta
             $path = $route['path'];
             $path = glue(get_basepath(), '/', trim($path, '/\\'));
         
@@ -110,6 +113,7 @@ function dispatch() {
                 $found = true;
                 $invoke_once = true;
                 $callback = $route['callback'];
+                
                 return call_user_func($callback, ...$arguments);
             }
         }
