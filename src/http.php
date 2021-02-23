@@ -17,7 +17,7 @@ namespace http;
  * @function get_files_params(): array
  * @function get_globals_params(): array
  * @function setglobal(string $name, $value): void
- * @function getglobal(string $name): void
+ * @function getglobal(string $name): mixed
  * @function response(string $body = '', int $code = HTTP_OK, ?array $header = null): void
  * @function redirect(string $uri): void
  */
@@ -259,6 +259,7 @@ function response(string $body = '', int $code = HTTP_OK, ?array $header = null)
     if(!headers_sent()) {
         $server = get_server_params();
         header(sprintf('%s %d %s', $server['SERVER_PROTOCOL'], $code, HTTP_STATUS_TEXT[$code]));
+        
         if(!is_null($header)) {
             header(sprintf('%s: %s', ...$header), true, $code);
         }

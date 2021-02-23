@@ -15,7 +15,7 @@ namespace fly;
  * @function post(string $path, $callback, ?string $name = null): void Agrega una ruta POST.
  * @function with_prefix(string $prefix, Closure $closure): void Define grupos de rutas bajo un prefijo de ruta en común.
  * @function generate_uri(string $route_name): ?string Genera una URI de una ruta nombrada.
- * @function dispatch() Despacha el enrutador.
+ * @function dispatch(): void Despacha el enrutador.
  */
 
 use Closure;
