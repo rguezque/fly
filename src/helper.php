@@ -23,7 +23,7 @@ function glue(string ...$vars): string {
  * @param string $string Texto a preformatear
  * @return string
  */
-function preformatting(string $string): string {
+function preformat(string $string): string {
     return sprintf('<pre>%s</pre>', $string);
 }
 
