@@ -5,7 +5,7 @@ require __DIR__.'/vendor/autoload.php';
 use function fly\dispatch;
 use function fly\get;
 use function fly\with_prefix;
-use function helper\preformatting;
+use function helper\preformat;
 
 get('/', function() {
     echo 'hola mundo';
@@ -36,7 +36,7 @@ get('/hola/(\w+)', function($name) {
 try {
     dispatch();
 } catch(OutOfBoundsException $e) {
-    echo preformatting($e->getMessage());
+    echo preformat($e->getMessage());
 }
 
 ?>
