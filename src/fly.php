@@ -9,20 +9,26 @@ namespace fly;
 /**
  * Funciones del router
  * 
- * @function set_basepath(string $path): void Define un directorio base donde se ubica el router.
- * @function get_basepath(): string Devuelve el string del directorio base.
- * @function get(string $path, $callback, ?string $name = null): void Agrega una ruta GET.
- * @function post(string $path, $callback, ?string $name = null): void Agrega una ruta POST.
- * @function with_prefix(string $prefix, Closure $closure): void Define grupos de rutas bajo un prefijo de ruta en común.
- * @function generate_uri(string $route_name): ?string Genera una URI de una ruta nombrada.
- * @function dispatch(): void Despacha el enrutador.
+ * @method void set_basepath(string $path) Define un directorio base donde se ubica el router.
+ * @method string get_basepath() Devuelve el string del directorio base.
+ * @method void get(string $path, $callback, ?string $name = null) Agrega una ruta GET.
+ * @method void post(string $path, $callback, ?string $name = null) Agrega una ruta POST.
+ * @method void with_namespace(string $namespace, Closure $closure) Define grupos de rutas bajo un namespace de ruta en común.
+ * @method string generate_uri(string $route_name) Genera una URI de una ruta nombrada.
+ * @method void dispatch() Despacha el enrutador.
  */
 
+use ArgumentCountError;
 use Closure;
+use InvalidArgumentException;
+use LogicException;
 use OutOfBoundsException;
 use RuntimeException;
 
+use function helper\add_leading_slash;
 use function helper\glue;
+use function helper\is_assoc_array;
+use function helper\remove_trailing_slash;
 use function http\setglobal;
 use function http\getglobal;
 use function http\get_server_params;
@@ -37,17 +43,17 @@ const ALLOWED_METHODS = ['GET', 'POST'];
 /**
  * Colección de rutas
  */
-setglobal('routes', array());
+setglobal('ROUTES', array());
 
 /**
  * Colección de URI de cada ruta
  */
-setglobal('routes_namepath', array());
+setglobal('ROUTE_NAMES', array());
 
 /**
- * Define un prefijo para un grupo de rutas
+ * Define un namespace para un grupo de rutas
  */
-setglobal('actual_prefix', '');
+setglobal('NAMESPACE', '');
 
 /**
  * Define el subdirectorio donde se aloja el router
@@ -56,13 +62,12 @@ setglobal('actual_prefix', '');
  * @return void
  */
 function set_basepath(string $path): void {
-    setglobal('BASEPATH', sprintf('/%s', trim($path, '/\\')));
+    setglobal('BASEPATH', add_leading_slash(trim($path, '/\\')));
 }
 
 /**
  * Devuelve la ruta del subdirectorio donde se aloja el router
  * 
- * @param void
  * @return string
  */
 function get_basepath(): string {
@@ -72,12 +77,10 @@ function get_basepath(): string {
 /**
  * Ejecuta el router
  * 
- * @param void
  * @return void
  * @throws RuntimeException
- * @throws OutOfBoundsException
  */
-function dispatch() {
+function dispatch(): void {
     // Variable bandera que asegura una sola ejecución de la función fly\dispatch()
     static $invoke_once = false;
 
@@ -92,34 +95,33 @@ function dispatch() {
         }
 
         // Dependiendo del método de petición se elige el array (GET o POST) correspondiente de rutas
-        $all_routes = getglobal('routes');
+        $all_routes = getglobal('ROUTES');
         $routes = $all_routes[$request_method];
+
+        // El slash al final no se toma en cuenta
+        $request_uri = ('/' !== $request_uri) ? remove_trailing_slash($request_uri) : $request_uri;
 
         $found = false;
 
         foreach($routes as $route) {
-            // El slash al final no se toma en cuenta
-            if($request_uri != '/') {
-                $request_uri = rtrim($request_uri, '/');
-            }
-            
             // Prepara el string de la ruta
             $path = $route['path'];
-            $path = glue(get_basepath(), '/', trim($path, '/\\'));
+            $path = glue(get_basepath(), add_leading_slash(trim($path, '/\\')));
         
-            if(preg_match(pattern($path), $request_uri, $arguments)) {
+            if(preg_match(route_pattern($path), $request_uri, $arguments)) {
                 array_shift($arguments);
         
                 $found = true;
                 $invoke_once = true;
                 $callback = $route['callback'];
                 
-                return call_user_func($callback, ...$arguments);
+                call_user_func($callback, $arguments);
+                return;
             }
         }
 
         if(!$found) {
-            throw new OutOfBoundsException(sprintf('No se encontró la ruta solicitada "%s"', $request_uri));
+            throw new RuntimeException(sprintf('No se encontró la ruta solicitada "%s"', $request_uri));
         }
     }
 }
@@ -127,55 +129,96 @@ function dispatch() {
 /**
  * Mapea una ruta que solo acepta el método de petición GET
  * 
+ * @param string $name Nombre de la ruta
  * @param string $path Definición de ruta
  * @param mixed $callback Controlador de la ruta
- * @param string $name Nombre de la ruta
  * @return void
  */
-function get(string $path, $callback, ?string $name = null): void {
-    $path = glue('/', trim($path, '/\\'));
-    $path = glue(getglobal('actual_prefix'), $path);
-    // Guarda la ruta en la colección de rutas
-    $routes = (array) getglobal('routes');
-    $routes['GET'][] = ['path' => $path, 'callback' => $callback];
-    setglobal('routes', $routes);
-
-    // Guarda o genera el nombre de la ruta
-    save_route_name($path, $name);
+function get(string $name, string $path, $callback): void {
+    route('GET', $name, $path, $callback);
 }
 
 /**
  * Mapea una ruta que solo acepta el método de petición POST
  * 
+ * @param string $name Nombre de la ruta
  * @param string $path Definición de ruta
  * @param mixed $callback Controlador de la ruta
- * @param string $name Nombre de la ruta
  * @return void
  */
-function post(string $path, $callback, ?string $name = null): void {
-    $path = glue('/', trim($path, '/\\'));
-    $path = glue(getglobal('actual_prefix'), $path);
+function post(string $name, string $path, $callback): void {
+    route('POST', $name, $path, $callback);
+}
+
+/**
+ * Mapea una ruta que solo acepta el método de petición PUT
+ * 
+ * @param string $name Nombre de la ruta
+ * @param string $path Definición de ruta
+ * @param mixed $callback Controlador de la ruta
+ * @return void
+ */
+function put(string $name, string $path, $callback): void {
+    route('PUT', $name, $path, $callback);
+}
+
+/**
+ * Mapea una ruta que solo acepta el método de petición DELETE
+ * 
+ * @param string $name Nombre de la ruta
+ * @param string $path Definición de ruta
+ * @param mixed $callback Controlador de la ruta
+ * @return void
+ */
+function delete(string $name, string $path, $callback): void {
+    route('DELETE', $name, $path, $callback);
+}
+
+/**
+ * Mapea una ruta
+ * 
+ * @param string $method Método de petición
+ * @param string $name Nombre de la ruta
+ * @param string $path Definición de ruta
+ * @param mixed $callback Controlador de la ruta
+ * @return void
+ * @throws RuntimeException
+ * @throws LogicException
+ */
+function route(string $method, string $name, string $path, $callback): void {
+    // Valida que el método de petición recibido sea soportado por el router
+    if(!in_array($method, ALLOWED_METHODS)) {
+        throw new RuntimeException(sprintf('El método de petición %s no está soportado en la definición de la ruta %s:"%s".', $method, $name, $path));
+    }
+
+    // Verifica si ya existe una ruta con el mismo nombre
+    if(array_key_exists($name, getglobal('ROUTE_NAMES'))) {
+        throw new LogicException(sprintf('Ya existe una ruta con el nombre "%s".', $name));
+    }
+
+    $path = add_leading_slash(trim($path, '/\\'));
+    $path = glue(getglobal('NAMESPACE'), $path);
     // Guarda la ruta en la colección de rutas
-    $routes = (array) getglobal('routes');
-    $routes['POST'][] = ['path' => $path, 'callback' => $callback];
-    setglobal('routes', $routes);
+    $routes = (array) getglobal('ROUTES');
+    $routes[$method][] = ['path' => $path, 'callback' => $callback];
+    setglobal('ROUTES', $routes);
 
     // Guarda o genera el nombre de la ruta
     save_route_name($path, $name);
 }
 
 /**
- * Define grupos de rutas bajo un prefijo de ruta en común
+ * Define grupos de rutas con namespace
  * 
- * @param string $prefix Prefijo del grupo
+ * @param string $namespace Namespace del grupo
  * @param Closure $closure Calllback con la definición de rutas
  * @return void
  */
-function with_prefix(string $prefix, Closure $closure): void {
-    $prefix = glue('/', trim($prefix, '/\\'));
-    setglobal('actual_prefix', $prefix);
+function with_namespace(string $namespace, Closure $closure): void {
+    $namespace = add_leading_slash(trim($namespace, '/\\'));
+    setglobal('NAMESPACE', $namespace);
     $closure();
-    setglobal('actual_prefix', '');
+    setglobal('NAMESPACE', '');
 }
 
 /**
@@ -187,21 +230,46 @@ function with_prefix(string $prefix, Closure $closure): void {
  */
 function save_route_name(string $path, ?string $name): void {
     $name = $name ?? uniqid('fly_', true);
-    $routes_path = getglobal('routes_namepath');
+    $routes_path = getglobal('ROUTE_NAMES');
     $routes_path[$name] = $path;
-    setglobal('routes_namepath', $routes_path);
+    setglobal('ROUTE_NAMES', $routes_path);
 }
 
 /**
- * Recupera la URI de una ruta a partir de su nombre
+ * Genera la URI de una ruta a partir de su nombre y parámetros
  * 
  * @param string $route_name Nombre de la ruta
+ * @param array $params Parámetros a ser cazados con los wildcards de la ruta
  * @return string
+ * @throws OutOfBoundsException
+ * @throws InvalidArgumentException
+ * @throws ArgumentCountError
  */
-function generate_uri(string $route_name): ?string {
-    $path = getglobal('routes_namepath');
+function generate_uri(string $route_name, array $params = []): string {
+    $route_names = getglobal('ROUTE_NAMES');
 
-    return isset($path[$route_name]) ? glue(get_basepath(), $path[$route_name]) : null;
+    if(!array_key_exists($route_name, $route_names)) {
+        throw new OutOfBoundsException(sprintf('No existe una ruta con el nombre "%s".', $route_name));
+    }
+    
+    $path = $route_names[$route_name];
+
+    if(!empty($params)) {
+        if(!is_assoc_array($params)) {
+            throw new InvalidArgumentException(sprintf('Se esperaba un array asociativo. Las claves deben coincidir con los wildcards de la ruta "%s".', $route_name));
+        }
+
+        $path = preg_replace_callback('#{(\w+)}#', function($match) use($route_name, $path, $params) {
+            $key = $match[1];
+            if(!array_key_exists($key, $params)) {
+                throw new ArgumentCountError(sprintf('Parámetros insuficientes al intentar generar la URI para la ruta %s:"%s".', $route_name, $path));
+            }
+            
+            return $params[$key];
+        },$path);
+    }
+
+    return $path;
 }
 
 /**
@@ -210,9 +278,10 @@ function generate_uri(string $route_name): ?string {
  * @param string $path Definición de la ruta
  * @return string
  */
-function pattern(string $path): string {
-    $parse_path = glue('/', trim($path, '/\\'));
+function route_pattern(string $path): string {
+    $parse_path = add_leading_slash(trim($path, '/\\'));
     $parse_path = str_replace('/', '\/', $parse_path);
+    $parse_path = preg_replace('#{(\w+)}#', '(?<$1>\w+)', $parse_path);
 
     return '#^' . $parse_path . '$#i';
 }

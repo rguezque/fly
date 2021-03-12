@@ -6,24 +6,27 @@
  */
 
 namespace http;
+
+use OutOfBoundsException;
+
 /**
  * Funciones de http
  * 
- * @function get_server_params(): array
- * @function get_query_params(): array
- * @function get_cookie_params(): array
- * @function unsetcookie(string $name): void
- * @function get_request_params(): array
- * @function get_files_params(): array
- * @function get_globals_params(): array
- * @function setglobal(string $name, $value): void
- * @function getglobal(string $name): mixed
- * @function response(string $body = '', int $code = HTTP_OK, ?array $header = null): void
- * @function redirect(string $uri): void
+ * @method array get_server_params() Devuelve los parámetros de $_SERVER
+ * @method array get_query_params() Devuelve los parámetros de $_GET
+ * @method array get_cookie_params() Devuelve los parámetros de $_COOKIE
+ * @method void unsetcookie(string $name) Elimina una cookie
+ * @method array get_request_params() Devuelve los parámetros de $_POST
+ * @method array get_files_params() Devuelve los parámetros de $_FILES
+ * @method array get_globals_params() Devuelve los parámetros de $GLOBALS
+ * @method void setglobal(string $name, $value) Crea una variable global
+ * @method mixed getglobal(string $name) Devuelve una variable global específica
+ * @method void response(string $body = '', int $code = HTTP_OK, ?array $header = null) Devuelve una respuesta HTTP
+ * @method void json_response(array $data) Devuelve una respuesta HTTP en formato json
+ * @method void redirect(string $uri) Redirecciona a otra URI
  */
 
-
-use function fly\generate_uri;
+use function helper\is_assoc_array;
 
 const HTTP_CONTINUE = 100;
 const HTTP_SWITCHING_PROTOCOLS = 101;
@@ -155,9 +158,8 @@ const HTTP_STATUS_TEXT = [
 ];
 
 /**
- * Devuelve el array $_SERVER
+ * Devuelve los parámetros de $_SERVER
  * 
- * @param void
  * @return array
  */
 function get_server_params(): array {
@@ -165,9 +167,8 @@ function get_server_params(): array {
 }
 
 /**
- * Devuelve el array $_GET
+ * Devuelve los parámetros de $_GET
  * 
- * @param void
  * @return array
  */
 function get_query_params(): array {
@@ -175,9 +176,8 @@ function get_query_params(): array {
 }
 
 /**
- * Devuelve el array $_COOKIE
+ * Devuelve los parámetros de $_COOKIE
  * 
- * @param void
  * @return array
  */
 function get_cookie_params(): array {
@@ -195,9 +195,8 @@ function unsetcookie(string $name): void {
 }
 
 /**
- * Devuelve el array $_POST
+ * Devuelve los parámetros de $_POST
  * 
- * @param void
  * @return array
  */
 function get_request_params(): array {
@@ -205,9 +204,8 @@ function get_request_params(): array {
 }
 
 /**
- * Devuelve el array $_FILES
+ * Devuelve los parámetros de $_FILES
  * 
- * @param void
  * @return array
  */
 function get_files_params(): array {
@@ -215,9 +213,8 @@ function get_files_params(): array {
 }
 
 /**
- * Devuelve el array $GLOBALS
+ * Devuelve los parámetros de $GLOBALS
  * 
- * @param void
  * @return array
  */
 function get_globals_params(): array {
@@ -248,37 +245,55 @@ function getglobal(string $name) {
 }
 
 /**
- * Devuelve un HTTP response
+ * Devuelve una respuesta HTTP
  * 
- * @param string $body Cuerpo del response
- * @param int $code Código de estatus
- * @param array $header Encabezado del response
+ * @param string $content Contenido del response
+ * @param int $code Código de estatus HTTP
+ * @param array $headers Array asociativo con encabezado(s) del response
  * @return void
+ * @throws OutOfBoundsException
  */
-function response(string $body = '', int $code = HTTP_OK, ?array $header = null): void {
+function response(string $content = '', int $code = HTTP_OK, array $headers = []): void {
+    if(!array_key_exists($code, HTTP_STATUS_TEXT)) {
+        throw new OutOfBoundsException(sprintf('El código %d no es un estatus HTTP válido.', $code));
+    }
+
     if(!headers_sent()) {
         $server = get_server_params();
         header(sprintf('%s %d %s', $server['SERVER_PROTOCOL'], $code, HTTP_STATUS_TEXT[$code]));
         
-        if(!is_null($header)) {
-            header(sprintf('%s: %s', ...$header), true, $code);
+        if(!empty($headers) && is_assoc_array($headers)) {
+            foreach($headers as $header => $value) {
+                header(sprintf('%s: %s', $header, $value), true, $code);
+            }
         }
     }
     
-    echo $body;
+    echo $content;
 }
 
 /**
- * Redirecciona hacia una ruta nombrada, una ruta específica o una URL externa
+ * Devuelve una respuesta HTTP en formato json
+ * 
+ * @param array $data Array de datos a procesar y devolver
+ * @return void
+ */
+function json_response(array $data): void {
+    // Solo acepta datos en array asociativo
+    if(!is_assoc_array($data)) {
+        throw new InvalidArgumentException('Formato incorrecto de datos. Se esperaba un array asociativo.');
+    }
+
+    response(json_encode($data), HTTP_OK, ['Content-Type' => 'application/json']);
+}
+
+/**
+ * Redirecciona a otra URI
  * 
  * @param string $uri Ruta de redirección
  * @return void
  */
 function redirect(string $uri): void {
-    if(!strpos($uri, '://')) {
-        $uri = generate_uri($uri) ?? $uri;
-    }
-
     header(sprintf('location: %s', $uri), true, HTTP_FOUND);
 }
 

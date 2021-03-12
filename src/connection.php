@@ -9,7 +9,7 @@ namespace connection;
 /**
  * Funciones de conexión PDO MySQL
  * 
- * @function pdo_mysql(string $string_url, ?array $options = null): ?PDO
+ * @method ?PDO pdo_mysql(string $string_url, ?array $options = null)
  */
 
 use PDO;

@@ -3,72 +3,63 @@
 
 ## Routing
 
+Cada ruta se compone de un nombre único, el *string* de la ruta y un callback. Dependiendo del método de petición que aceptará la ruta será la función a utilizar. Los métodos aceptados son `GET`, `POST`, `PUT` y `DELETE` que corresponden con las funciones `get()`, `post()`, `put()` y `delete()`.
+
 ```php
-<?php
+?php
 
 require __DIR__.'/vendor/autoload.php';
 
-use function fly\{get, dispatch};
-use function http\{response, get_server_params};
-use const http\{HTTP_OK, HTTP_NOT_FOUND, HTTP_STATUS_TEXT};
+use function fly\dispatch;
+use function fly\get;
+use function fly\with_namespace;
+use function helper\preformat;
+use function http\json_response;
 
-// Ejemplo de una ruta nombrada, 'homepage'.
-get('/', function() {
-    echo 'Hola mundo';
-}, 'homepage');
-
-get('/foo', function() {
+get('homepage', '/', function() {
     $data = [
+        'greeting' => 'Hola',
         'name' => 'John',
         'lastname' => 'Doe'
     ];
-    response(json_encode($data), HTTP_OK, ['Content-Type', 'application/json']);
-}, 'foo_page');
+    
+    json_response($data);
+});
 
-get('/hola/(\w+)/(\w+)', function($name, $lastname) {
-    printf('Hola %s %s', $name, $lastname);
+with_namespace('/foo', function() {
+    get('foo_index', '/', function() {
+        echo 'Foo';
+    });
+
+    get('foo_bar', '/bar', function() {
+        echo 'Bar';
+    }, 'foo_bar_page');
+
+    get('foo_goo', '/goo', function() {
+        echo 'Goo';
+    });
+});
+
+get('baz_route', '/baz', function() {
+    echo 'Baz';
+});
+
+get('hola_route', '/hola/{nombre}', function(array $args) {
+    printf('Hola %s.', $args['nombre']);
 });
 
 try {
     dispatch();
 } catch(RuntimeException $e) {
-    $server = get_server_params();
-    response(sprintf('<h1>%s %s %s</h1>', $server['SERVER_PROTOCOL'], HTTP_NOT_FOUND, HTTP_STATUS_TEXT[HTTP_NOT_FOUND]), HTTP_NOT_FOUND);
+    echo preformat($e->getMessage());
 }
 
 ?>
 ```
 
-### Rutas nombradas
-
-Este parámetro es opcional.
-
-```php
-<?php
-
-require __DIR__.'/vendor/autoload.php';
-
-use function fly\{get, dispatch};
-
-// Ejemplo de una ruta nombrada, 'homepage'.
-get('/', function() {
-    echo 'Hola mundo';
-}, 'homepage');
-
-// Otra ruta con nombre
-get('/foo', function() {
-    $data = [
-        'name' => 'John',
-        'lastname' => 'Doe'
-    ];
-    response(json_encode($data), HTTP_OK, ['Content-Type', 'application/json']);
-}, 'foo_page');
-
-dispatch();
-?>
-```
-
 ### Groups
+
+Agrupa rutas con un *namespace*.
 
 ```php
 <?php
@@ -77,28 +68,24 @@ require __DIR__.'/vendor/autoload.php';
 
 use function fly\dispatch;
 use function fly\get;
-use function fly\with_prefix;
+use function fly\with_namespace ;
 
-get('/', function() {
+get('index', '/', function() {
     echo 'hola mundo';
 });
 
-with_prefix('/foo', function() {
-    get('/', function() {
+with_namespace('/foo', function() {
+    get('index_foo', '/', function() {
         echo 'Foo';
     });
 
-    get('/bar', function() {
+    get('foo_bar', '/bar', function() {
         echo 'Bar';
     });
 
-    get('/goo', function() {
+    get('foo_goo', '/goo', function() {
         echo 'Goo';
     });
-});
-
-get('/baz', function() {
-    echo 'Baz';
 });
 
 dispatch();
@@ -106,9 +93,18 @@ dispatch();
 ?>
 ```
 
+Lo anterior genera las rutas:
+
+```
+/
+/foo/
+/foo/bar
+/foo/goo
+```
+
 ## Basepath
 
-Define un directorio base para el router si este se aloja en un subdirectorio del *server*. Ejemplo:
+Define un directorio base para el router si este se aloja en un subdirectorio del *server*.
 
 ```php
 use function fly\set_basepath;
@@ -118,29 +114,37 @@ set_basepath('/subdirectorio-router');
 
 ## Redirect
 
-Redirecciona a una ruta específica, a una ruta nombrada o una URI.
+Devuelve una redireccion a otra URI.
 
 ```php
-use function http\redirect;
+use function http\redirect_response;
 use function fly\generate_uri;
 use function fly\get;
 use function fly\dispatch;
 
-get('/', function() {
-    // A una ruta
-    redirect('/foo/bar');
-    // A una ruta nombrada
-    
-    redirect(generate_uri('foo_page'));
+get('index', '/', function() {
+    // A una ruta según su nombre
+    redirect_response(generate_uri('foo_page'));
     // A una URI
-    redirect('https://www.github.com/johndoe');
+    redirect_response('https://www.fakesite.foo');
 });
 
-get('/foo', function() {
+get('foo_page', '/foo', function() {
     echo 'Foo';
-}, 'foo_page');
+});
 
 dispatch();
+```
+
+## Generate URI
+
+Genera la URI correspondiente de una ruta según su nombre.
+
+```php
+// Ruta '/'
+generate_uri('homepage');
+// Enviando parámetros para la ruta '/show/{id}'
+generate_uri('show_page', ['id' => 9]);
 ```
 
 ## Templates
@@ -156,7 +160,7 @@ use function template\{set_views_path, template};
 
 set_views_path(__DIR__.'/views');
 
-get('/', function() {
+get('index', '/', function() {
     template('homepage', ['mensaje' => 'Hola mundo']);
 });
 
@@ -181,7 +185,7 @@ require __DIR__.'/vendor/autoload.php';
 use function fly\{get, dispatch};
 use function connection\pdo_mysql;
 
-get('/', function() {
+get('index', '/', function() {
 	$db = pdo_mysql('mysql://user:pass@127.0.0.1:3306/dbname?charset=utf8&persistent=true');
 });
 
@@ -200,7 +204,8 @@ dispatch();
 - `setglobal(string $name, $value)`: Crea una variable global.
 - `getglobal(string $name)`: Devuelve una variable global.
 - `response(string $body = '', int $code = HTTP_OK, ?array $header = null)`: Devuelve una respuesta HTTP.
-- `redirect(string $uri)`: Redirecciona a otra ruta o URL.
+- `json_response(array $data)`: Devuelve una respuesta HTTP en formato json
+- `redirect_response(string $uri)`: Redirecciona a otra ruta o URL.
 
 
 

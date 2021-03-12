@@ -9,12 +9,14 @@ namespace template;
 /**
  * Funciones de template
  * 
- * @function set_views_path(string $path): void
- * @function get_views_path(): string
- * @function template(string $template, array $arguments = []): void
+ * @method void set_views_path(string $path)
+ * @method string get_views_path()
+ * @method void template(string $template, array $arguments = [])
  */
 
 use RuntimeException;
+
+use function helper\add_leading_slash;
 use function http\setglobal;
 use function http\getglobal;
 
@@ -52,7 +54,7 @@ function template(string $template, array $arguments = []): void {
     }
 
     $template .= '.php';
-    $template = '/' . ltrim($template, '/\\');
+    $template = add_leading_slash($template);
     $template = get_views_path() . $template;
 
     if(!file_exists($template)) {

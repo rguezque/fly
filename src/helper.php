@@ -28,6 +28,78 @@ function preformat(string $string): string {
 }
 
 /**
+ * Agrega un slash al final de una cadena de texto
+ * 
+ * @param string $str Cadena de texto
+ * @return string
+ */
+function add_trailing_slash(string $str): string {
+    return sprintf('%s/', remove_trailing_slash($str));
+}
+
+/**
+ * Remueve slashes al final de una cadena de texto
+ * 
+ * @param string $str Cadena de texto
+ * @return string
+ */
+function remove_trailing_slash(string $str): string {
+    return rtrim($str, '/\\');
+}
+
+/**
+ * agrega un slash al inicio de una cadena de texto
+ * 
+ * @param string $str Cadena de texto
+ * @return string
+ */
+function add_leading_slash(string $str): string {
+    return sprintf('/%s', remove_leading_slash($str));
+}
+
+/**
+ * Remueve slashes al inicio de una cadena de texto
+ * 
+ * @param string $str Cadena de texto
+ * @return string
+ */
+function remove_leading_slash(string $str): string {
+    return ltrim($str, '/\\');
+}
+
+/**
+ * Devuelve true si una cadena de texto tiene un prefijo específico
+ * 
+ * @param string $haystack Cadena de texro a evaluar
+ * @param string $needle Prefijo a buscar
+ * @return bool
+ */
+function str_starts_with(string $haystack, string $needle): bool {
+    return $needle === substr($haystack, 0, strlen($needle));
+}
+
+/**
+ * Devuelve true si una cadena de texto tiene un sufijo específico
+ * 
+ * @param string $haystack Cadena de texro a evaluar
+ * @param string $needle Sufijo a buscar
+ * @return bool
+ */
+function str_ends_with(string $haystack, string $needle): bool {
+    return $needle === substr($haystack, -strlen($needle));
+}
+
+/**
+ * Devuelve true si el array evaluado es asociativo
+ * 
+ * @param array $array El array a evaluar
+ * @return bool
+ */
+function is_assoc_array(array $array) {
+    return (is_array($array) && (count($array)==0 || 0 !== count(array_diff_key($array, array_keys(array_keys($array))) )));
+}
+
+/**
  * Vuelca una variable.
  * 
  * Vuelca información de una variable, en texto preformateado para
