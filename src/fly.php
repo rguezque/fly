@@ -99,6 +99,7 @@ function dispatch(): void {
         $all_routes = getglobal('ROUTES');
         $routes = $all_routes[$request_method];
 
+        parse_request_uri($request_uri);
         // El slash al final no se toma en cuenta
         $request_uri = ('/' !== $request_uri) ? remove_trailing_slash($request_uri) : $request_uri;
 
@@ -285,6 +286,21 @@ function route_pattern(string $path): string {
     $parse_path = preg_replace('#{(\w+)}#', '(?<$1>\w+)', $parse_path);
 
     return '#^'.$parse_path.'$#i';
+}
+
+/**
+ * Evalúa la URI solicitada
+ * 
+ * Si se envian parámetros en la URI(ej. /path/?foo=bar), se toma el componente 'path' 
+ * como la URI solicitada y los parámetros son almacenados en $_GET 
+ * 
+ * @param string $uri La URI a evaluar
+ * @return string
+ */
+function parse_request_uri(string &$uri): void {
+    if(strpos($uri, '?')) {
+        $uri = parse_url($uri)['path'];
+    }
 }
 
 ?>
