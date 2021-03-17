@@ -29,6 +29,7 @@ use function helper\add_leading_slash;
 use function helper\glue;
 use function helper\is_assoc_array;
 use function helper\remove_trailing_slash;
+use function helper\str_path;
 use function http\setglobal;
 use function http\getglobal;
 use function http\get_server_params;
@@ -36,7 +37,7 @@ use function http\get_server_params;
 /**
  * Métodos aceptados
  * 
- * @global string[]
+ * @var string[]
  */
 const ALLOWED_METHODS = ['GET', 'POST'];
 
@@ -62,7 +63,7 @@ setglobal('NAMESPACE', '');
  * @return void
  */
 function set_basepath(string $path): void {
-    setglobal('BASEPATH', add_leading_slash(trim($path, '/\\')));
+    setglobal('BASEPATH', add_leading_slash(remove_trailing_slash($path)));
 }
 
 /**
@@ -94,7 +95,7 @@ function dispatch(): void {
             throw new RuntimeException(sprintf('El método de petición %s no está soportado.', $request_method));
         }
 
-        // Dependiendo del método de petición se elige el array (GET o POST) correspondiente de rutas
+        // Dependiendo del método de petición se elige el array correspondiente de rutas
         $all_routes = getglobal('ROUTES');
         $routes = $all_routes[$request_method];
 
@@ -106,7 +107,7 @@ function dispatch(): void {
         foreach($routes as $route) {
             // Prepara el string de la ruta
             $path = $route['path'];
-            $path = glue(get_basepath(), add_leading_slash(trim($path, '/\\')));
+            $path = glue(get_basepath(), str_path($path));
         
             if(preg_match(route_pattern($path), $request_uri, $arguments)) {
                 array_shift($arguments);
@@ -196,7 +197,7 @@ function route(string $method, string $name, string $path, $callback): void {
         throw new LogicException(sprintf('Ya existe una ruta con el nombre "%s".', $name));
     }
 
-    $path = add_leading_slash(trim($path, '/\\'));
+    $path = str_path($path);
     $path = glue(getglobal('NAMESPACE'), $path);
     // Guarda la ruta en la colección de rutas
     $routes = (array) getglobal('ROUTES');
@@ -215,7 +216,7 @@ function route(string $method, string $name, string $path, $callback): void {
  * @return void
  */
 function with_namespace(string $namespace, Closure $closure): void {
-    $namespace = add_leading_slash(trim($namespace, '/\\'));
+    $namespace = str_path($namespace);
     setglobal('NAMESPACE', $namespace);
     $closure();
     setglobal('NAMESPACE', '');
@@ -228,7 +229,7 @@ function with_namespace(string $namespace, Closure $closure): void {
  * @param string $name Nombre de la ruta
  * @return void
  */
-function save_route_name(string $path, ?string $name): void {
+function save_route_name(string $path, ?string $name = null): void {
     $name = $name ?? uniqid('fly_', true);
     $routes_path = getglobal('ROUTE_NAMES');
     $routes_path[$name] = $path;
@@ -279,11 +280,11 @@ function generate_uri(string $route_name, array $params = []): string {
  * @return string
  */
 function route_pattern(string $path): string {
-    $parse_path = add_leading_slash(trim($path, '/\\'));
+    $parse_path = str_path($path);
     $parse_path = str_replace('/', '\/', $parse_path);
     $parse_path = preg_replace('#{(\w+)}#', '(?<$1>\w+)', $parse_path);
 
-    return '#^' . $parse_path . '$#i';
+    return '#^'.$parse_path.'$#i';
 }
 
 ?>

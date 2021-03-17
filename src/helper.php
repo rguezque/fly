@@ -90,6 +90,16 @@ function str_ends_with(string $haystack, string $needle): bool {
 }
 
 /**
+ * Limpia y prepara el string de una ruta
+ * 
+ * @param string $path String path
+ * @return string
+ */
+function str_path(string $path): string {
+    return add_leading_slash(remove_trailing_slash($path));
+}
+
+/**
  * Devuelve true si el array evaluado es asociativo
  * 
  * @param array $array El array a evaluar
@@ -97,25 +107,6 @@ function str_ends_with(string $haystack, string $needle): bool {
  */
 function is_assoc_array(array $array) {
     return (is_array($array) && (count($array)==0 || 0 !== count(array_diff_key($array, array_keys(array_keys($array))) )));
-}
-
-/**
- * Vuelca una variable.
- * 
- * Vuelca información de una variable, en texto preformateado para
- * una mejor lectura de su cóntenido y opcionalmente termina el 
- * script actual.
- * 
- * @param mixed $var Variable a volcar
- * @param bool $exit Determina si se debe terminar el script después de volcar a variable
- * @return void
- */
-function dump($var, bool $exit = true): void {
-    echo '<pre>';
-    var_dump($var);
-    echo '</pre>';
-
-    if($exit) {exit();}
 }
 
 ?>
