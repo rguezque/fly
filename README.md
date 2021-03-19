@@ -183,10 +183,11 @@ dispatch();
 require __DIR__.'/vendor/autoload.php';
 
 use function fly\{get, dispatch};
-use function connection\pdo_mysql;
+use function connection\pdo_connection;
 
 get('index', '/', function() {
-	$db = pdo_mysql('mysql://user:pass@127.0.0.1:3306/dbname?charset=utf8&persistent=true');
+	$db = pdo_connection('mysql:host=localhost;port=3306;dbname=nombre_bd;charset=utf8', 'nombre_usuario', 'clave_acceso', [/*...opciones...*/]);
+    //...
 });
 
 dispatch();

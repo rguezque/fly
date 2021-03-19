@@ -63,7 +63,7 @@ setglobal('NAMESPACE', '');
  * @return void
  */
 function set_basepath(string $path): void {
-    setglobal('BASEPATH', add_leading_slash(remove_trailing_slash($path)));
+    setglobal('BASEPATH', str_path($path));
 }
 
 /**
@@ -95,10 +95,11 @@ function dispatch(): void {
             throw new RuntimeException(sprintf('El método de petición %s no está soportado.', $request_method));
         }
 
-        // Dependiendo del método de petición se elige el array correspondiente de rutas
+        // Dependiendo del método de petición http se elige el array correspondiente de rutas
         $all_routes = getglobal('ROUTES');
         $routes = $all_routes[$request_method];
 
+        // Separa y extrae el URI solicitado de los parámetros GET que pudieran ser enviados por la URI
         parse_request_uri($request_uri);
         // El slash al final no se toma en cuenta
         $request_uri = ('/' !== $request_uri) ? remove_trailing_slash($request_uri) : $request_uri;
@@ -108,7 +109,7 @@ function dispatch(): void {
         foreach($routes as $route) {
             // Prepara el string de la ruta
             $path = $route['path'];
-            $path = glue(get_basepath(), str_path($path));
+            $path = glue(get_basepath(), $path);
         
             if(preg_match(route_pattern($path), $request_uri, $arguments)) {
                 array_shift($arguments);
